@@ -29,7 +29,7 @@ export default function Menus() {
   return (
     <div className="absolute inset-0 bg-black/80 flex items-center justify-center pointer-events-auto z-50">
       <div className="bg-zinc-900 p-12 rounded-xl border border-zinc-700 text-center max-w-md w-full shadow-2xl">
-        <h1 className="text-5xl font-black text-white mb-8 tracking-tighter">MONOCHROME</h1>
+        <h1 className="text-5xl font-black text-white mb-8 tracking-tighter">bleakshot</h1>
         
         {gameState === 'gameover' && !showSettings && (
           <div className="mb-8 p-4 bg-red-900/20 border border-red-900/50 rounded-lg">
