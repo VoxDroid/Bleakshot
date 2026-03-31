@@ -101,6 +101,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { ammo, weaponIndex, isReloading } = get();
     if (isReloading || ammo[weaponIndex] === WEAPONS[weaponIndex].maxAmmo) return;
     set({ isReloading: true });
+    try { if (get().settings.audioEnabled) playSfx('reload', 0.9); } catch (_) {}
     setTimeout(() => {
       const newAmmo = [...get().ammo];
       newAmmo[get().weaponIndex] = WEAPONS[get().weaponIndex].maxAmmo;

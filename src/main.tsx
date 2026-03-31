@@ -4,15 +4,18 @@ import App from './App.tsx';
 import './index.css';
 
 const suppress = (...args: any[]) => {
-  if (typeof args[0] === 'string' && (
-    args[0].includes('THREE.Clock') || 
-    args[0].includes('deprecated parameters') ||
-    args[0].includes('PCFSoftShadowMap') ||
-    args[0].includes('PointerLockControls') ||
-    args[0].includes('Pointer lock cannot be acquired')
-  )) {
-    return true;
-  }
+  const text = args.map(a => {
+    if (typeof a === 'string') return a;
+    if (a && typeof a.message === 'string') return a.message;
+    try { return String(a); } catch { return '' }
+  }).join(' ');
+  if (
+    text.includes('THREE.Clock') ||
+    text.includes('deprecated parameters') ||
+    text.includes('PCFSoftShadowMap') ||
+    text.includes('PointerLockControls') ||
+    text.includes('Pointer lock cannot be acquired')
+  ) return true;
   return false;
 };
 

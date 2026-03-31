@@ -120,23 +120,28 @@ export default function Player() {
         const raycaster = new THREE.Raycaster();
         const raysToCast = weapon.rays || 1;
         
-        // Start position: when aiming, originate from camera forward (center),
-        // otherwise from the shoulder offset so bullets appear to come from the weapon model.
-        let startPos = new THREE.Vector3().copy(camera.position);
-        if (isAiming) {
-          const dir = new THREE.Vector3();
-          camera.getWorldDirection(dir);
-          startPos.add(dir.multiplyScalar(0.6));
-        } else {
-          startPos.add(new THREE.Vector3(0.3, -0.3, -0.5).applyEuler(camera.rotation));
-        }
-        
         for (let i = 0; i < raysToCast; i++) {
           const spreadMultiplier = isAiming ? 0.2 : 1;
           const spreadX = (Math.random() - 0.5) * weapon.spread * spreadMultiplier;
           const spreadY = (Math.random() - 0.5) * weapon.spread * spreadMultiplier;
           
           raycaster.setFromCamera(new THREE.Vector2(spreadX, spreadY), camera);
+          // Align bullet start with the ray origin so visuals match the raycast
+          const rayOrigin = raycaster.ray.origin.clone();
+          let startPos: THREE.Vector3;
+          const camNear = ((camera as THREE.PerspectiveCamera).near ?? 0.1);
+          const minStart = Math.max(0.6, camNear + 0.05);
+          const dirVec = raycaster.ray.direction.clone();
+          if (isAiming) {
+            startPos = rayOrigin.clone().add(dirVec.clone().multiplyScalar(minStart));
+          } else {
+            const shoulderOffset = new THREE.Vector3(0.3, -0.3, -0.5).applyQuaternion(camera.quaternion);
+            startPos = rayOrigin.clone().add(shoulderOffset);
+            // ensure start is not inside the near plane or too close to camera
+            if (startPos.distanceTo(rayOrigin) < minStart) {
+              startPos = rayOrigin.clone().add(dirVec.clone().multiplyScalar(minStart));
+            }
+          }
           const intersects = raycaster.intersectObjects(scene.children, true).filter(
             h => {
               let obj: THREE.Object3D | null = h.object;
@@ -145,7 +150,7 @@ export default function Player() {
             }
           );
           
-          let endPos = new THREE.Vector3().copy(raycaster.ray.origin).add(raycaster.ray.direction.multiplyScalar(50));
+          let endPos = raycaster.ray.origin.clone().add(raycaster.ray.direction.clone().multiplyScalar(50));
           
           if (intersects.length > 0) {
             const hit = intersects[0];
