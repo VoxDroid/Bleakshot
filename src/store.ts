@@ -9,6 +9,8 @@ interface Enemy {
   id: string;
   position: [number, number, number];
   health: number;
+  type?: 'scout' | 'grunt' | 'heavy';
+  maxHealth: number;
   lastHit?: number;
 }
 
@@ -21,6 +23,8 @@ interface Bullet {
 
 interface Settings {
   sensitivity: number;
+  crosshairSize?: number;
+  audioEnabled?: boolean;
 }
 
 interface GameStore {
@@ -45,6 +49,9 @@ interface GameStore {
   spawnEnemy: (enemy: Enemy) => void;
   damageEnemy: (id: string, amount: number) => void;
   addScore: (amount: number) => void;
+  xp: number;
+  level: number;
+  addXp: (amount: number) => void;
   damagePlayer: (amount: number) => void;
   diamonds: number;
   addDiamonds: (amount: number) => void;
@@ -106,16 +113,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const now = performance.now();
     const enemies = s.enemies.map(e => e.id === id ? { ...e, health: e.health - amount, lastHit: now } : e);
     const dead = enemies.find(e => e.id === id && e.health <= 0);
-    try { playSfx('hit', 0.6); } catch (_) {}
+    try { if (get().settings.audioEnabled) playSfx('hit', 0.6); } catch (_) {}
     if (dead) {
       setTimeout(() => {
         get().addScore(10);
         get().addDiamonds(1);
+        get().addXp(15);
       }, 0);
     }
     return { enemies: enemies.filter(e => e.health > 0) };
   }),
   addScore: (amount) => set((s) => ({ score: s.score + amount })),
+  xp: 0,
+  level: 1,
+  addXp: (amount) => set((s) => {
+    const total = s.xp + amount;
+    let lvl = s.level;
+    let remaining = total;
+    while (remaining >= lvl * 100) {
+      remaining -= lvl * 100;
+      lvl += 1;
+    }
+    return { xp: remaining, level: lvl };
+  }),
   diamonds: 0,
   addDiamonds: (amount) => set(s => ({ diamonds: s.diamonds + amount })),
   revives: 0,
@@ -126,7 +146,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   damagePlayer: (amount) => set((s) => {
     if (s.gameState !== 'playing') return {} as any;
     const newHealth = Math.max(0, s.health - amount);
-    try { playSfx('damage', 0.8); } catch (_) {}
+    try { if (get().settings.audioEnabled) playSfx('damage', 0.8); } catch (_) {}
     if (newHealth === 0) return { health: 0, gameState: 'gameover', lastPlayerHit: performance.now(), revives: s.revives + 1 } as any;
     return { health: newHealth, lastPlayerHit: performance.now() } as any;
   }),
@@ -146,6 +166,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   recoilTrigger: 0,
   triggerRecoil: () => set(s => ({ recoilTrigger: s.recoilTrigger + 1 })),
   lastPlayerHit: 0,
-  settings: { sensitivity: 1 },
+  settings: { sensitivity: 1, crosshairSize: 1, audioEnabled: true },
   updateSettings: (s) => set(state => ({ settings: { ...state.settings, ...s } }))
 }));

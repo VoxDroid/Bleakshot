@@ -3,7 +3,7 @@ import { RigidBody, useRapier, RapierRigidBody, CapsuleCollider } from '@react-t
 import { useKeyboardControls, PointerLockControls } from '@react-three/drei';
 import { useRef, useEffect } from 'react';
 import * as THREE from 'three';
-import { playSfx } from './sfx';
+import { playSfx, unlockAudio } from './sfx';
 import { useGameStore } from './store';
 import { WEAPONS } from './weapons';
 
@@ -72,10 +72,10 @@ export default function Player() {
   useFrame((state, delta) => {
     if (!body.current || gameState !== 'playing') return;
 
-    const { forward, backward, left, right, jump, sprint } = get();
+    const { forward, backward, left, right, jump, sprint, crouch } = get();
     const velocity = body.current.linvel();
     const position = body.current.translation();
-    const currentSpeed = isAiming ? SPEED * 0.4 : (sprint ? SPEED * 1.6 : SPEED);
+    const currentSpeed = isAiming ? SPEED * 0.4 : (sprint ? SPEED * 1.6 : (crouch ? SPEED * 0.5 : SPEED));
 
     setPlayerPosition(new THREE.Vector3(position.x, position.y, position.z));
 
@@ -102,7 +102,9 @@ export default function Player() {
     }
     const bobOffset = Math.sin(bobTime.current) * 0.05 * bobAmount.current;
     const aimOffset = isAiming ? -0.1 : 0;
-    camera.position.set(position.x, position.y + 0.8 + bobOffset + aimOffset, position.z);
+    const cameraBaseY = crouch ? 0.4 : 0.8;
+    const cameraY = position.y + cameraBaseY + bobOffset + aimOffset;
+    camera.position.set(position.x, cameraY, position.z);
 
     // Shooting
     const now = performance.now();
@@ -182,7 +184,7 @@ export default function Player() {
     <>
       <PointerLockControls 
         pointerSpeed={sensitivity}
-        onLock={() => setGameState('playing')} 
+        onLock={() => { try { unlockAudio(); } catch (_) {} ; setGameState('playing'); }} 
         onUnlock={() => {
           if (useGameStore.getState().health > 0) setGameState('menu');
         }} 

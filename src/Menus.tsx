@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useGameStore } from './store';
+import { unlockAudio } from './sfx';
 
 export default function Menus() {
   const { gameState, resetGame, score, health, settings, updateSettings, revives, useRevive } = useGameStore();
   const [showSettings, setShowSettings] = useState(false);
 
   const handlePlay = () => {
+    // Try to unlock/resume audio on the user gesture that starts the game
+    try { unlockAudio(); } catch (_) {}
     if (gameState === 'gameover' || (gameState === 'menu' && score === 0 && health === 100)) {
       resetGame();
     }
@@ -41,18 +44,45 @@ export default function Menus() {
         {showSettings ? (
           <div className="space-y-6 text-left">
             <h2 className="text-2xl font-bold text-white mb-4">Settings</h2>
-            <div>
-              <label className="block text-gray-400 mb-2">Mouse Sensitivity: {settings.sensitivity.toFixed(1)}</label>
-              <input 
-                type="range" 
-                min="0.1" 
-                max="3" 
-                step="0.1" 
-                value={settings.sensitivity}
-                onChange={(e) => updateSettings({ sensitivity: parseFloat(e.target.value) })}
-                className="w-full accent-white"
-              />
-            </div>
+              <div>
+                <label className="block text-gray-400 mb-2">Mouse Sensitivity: {settings.sensitivity.toFixed(1)}</label>
+                <input 
+                  type="range" 
+                  min="0.1" 
+                  max="3" 
+                  step="0.1" 
+                  value={settings.sensitivity}
+                  onChange={(e) => updateSettings({ sensitivity: parseFloat(e.target.value) })}
+                  className="w-full accent-white"
+                />
+              </div>
+              <div className="mt-4">
+                <label className="block text-gray-400 mb-2">Crosshair Size: {(settings.crosshairSize || 1).toFixed(1)}</label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2"
+                  step="0.1"
+                  value={settings.crosshairSize ?? 1}
+                  onChange={(e) => updateSettings({ crosshairSize: parseFloat(e.target.value) })}
+                  className="w-full accent-white"
+                />
+              </div>
+              <div className="mt-4">
+                <label className="block text-gray-400 mb-2">Audio: {settings.audioEnabled ? 'On' : 'Off'}</label>
+                <button
+                  onClick={() => {
+                    updateSettings({ audioEnabled: !settings.audioEnabled });
+                    if (!settings.audioEnabled) {
+                      // if enabling audio, try to unlock/resume audio now
+                      try { unlockAudio(); } catch (_) {}
+                    }
+                  }}
+                  className="w-full py-2 bg-zinc-800 text-white font-bold hover:bg-zinc-700 transition-colors rounded-lg border border-zinc-600"
+                >
+                  {settings.audioEnabled ? 'MUTE' : 'UNMUTE'}
+                </button>
+              </div>
             <button
               onClick={() => setShowSettings(false)}
               className="w-full py-3 mt-4 bg-zinc-800 text-white font-bold hover:bg-zinc-700 transition-colors rounded-lg border border-zinc-600"

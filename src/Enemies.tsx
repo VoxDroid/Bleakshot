@@ -32,16 +32,33 @@ function Enemy({ id, initialPosition }: { id: string, initialPosition: [number, 
     const speed = new THREE.Vector3(velocity.x, 0, velocity.z).length();
 
     const difficulty = 1 + (elapsed / 60);
-    const moveSpeed = 3 * difficulty;
-    const attackDamage = Math.max(1, Math.round(10 * difficulty));
+    const type = enemyData?.type || 'grunt';
+    const baseMove = type === 'scout' ? 4 : type === 'heavy' ? 2 : 3;
+    const moveSpeed = baseMove * difficulty;
+    const baseDamage = type === 'scout' ? 5 : type === 'heavy' ? 20 : 10;
+    const attackDamage = Math.max(1, Math.round(baseDamage * difficulty));
 
     if (dist < 20 && dist > 2) {
-      // Move towards player
-      const dir = playerPosition.clone().sub(enemyVec).normalize();
-      body.current.setLinvel({ x: dir.x * moveSpeed, y: velocity.y, z: dir.z * moveSpeed }, true);
-      
-      // Look at player
-      const targetRotation = Math.atan2(dir.x, dir.z);
+      // Basic tactical movement: chase, occasional flank, or retreat when low
+      const toPlayer = playerPosition.clone().sub(enemyVec).normalize();
+      let desired = toPlayer;
+
+      const baseHealthByType = { scout: 15, grunt: 30, heavy: 60 } as Record<string, number>;
+      const baseHealthVal = baseHealthByType[type] || 30;
+      const lowHealth = enemyData && enemyData.health < baseHealthVal * 0.3;
+
+      if (lowHealth) {
+        // Retreat a bit while low on health
+        desired = enemyVec.clone().sub(playerPosition).normalize();
+      } else if (dist < 12 && Math.random() < 0.02) {
+        // Try a quick flank (perpendicular)
+        desired = toPlayer.applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2).normalize();
+      }
+
+      body.current.setLinvel({ x: desired.x * moveSpeed, y: velocity.y, z: desired.z * moveSpeed }, true);
+
+      // Look at movement direction
+      const targetRotation = Math.atan2(desired.x, desired.z);
       body.current.setRotation(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, targetRotation, 0)), true);
     } else if (dist <= 2) {
       // Attack
@@ -69,7 +86,9 @@ function Enemy({ id, initialPosition }: { id: string, initialPosition: [number, 
     // Hit flash
     if (materialRef.current && enemyData) {
       const isHit = performance.now() - (enemyData.lastHit || 0) < 150;
-      materialRef.current.color.set(isHit ? '#ff0000' : '#444444');
+      // Color by type
+      const typeColor = enemyData.type === 'scout' ? '#2ecc71' : (enemyData.type === 'heavy' ? '#8b0000' : '#444444');
+      materialRef.current.color.set(isHit ? '#ff0000' : typeColor);
       materialRef.current.emissive.set(isHit ? '#ff0000' : '#000000');
       
       if (enemyData.lastHit && performance.now() - enemyData.lastHit < 2000) {
@@ -86,9 +105,9 @@ function Enemy({ id, initialPosition }: { id: string, initialPosition: [number, 
         {showHealth && enemyData && (
           <Html position={[0, 2.5, 0]} center>
             <div className="w-16 h-2 bg-black border border-gray-700 rounded overflow-hidden">
-              <div 
+                <div 
                 className="h-full bg-red-600 transition-all duration-200" 
-                style={{ width: `${enemyData.health}%` }}
+                style={{ width: `${Math.max(0, Math.round((enemyData.health / (enemyData.maxHealth || 100)) * 100))}%` }}
               />
             </div>
           </Html>
@@ -153,10 +172,16 @@ export default function Enemies() {
       const maxEnemies = 15 + Math.floor(elapsedNow / 20);
 
       if (useGameStore.getState().enemies.length < maxEnemies) {
+        const roll = Math.random();
+        const type: 'scout' | 'grunt' | 'heavy' = roll < 0.5 ? 'scout' : (roll < 0.85 ? 'grunt' : 'heavy');
+        const baseHealthByType: Record<string, number> = { scout: 15, grunt: 30, heavy: 60 };
+        const health = Math.max(5, Math.round(baseHealthByType[type] + elapsedNow * (type === 'heavy' ? 2 : 1)));
         spawnEnemy({
           id: Math.random().toString(),
           position: [Math.random() * 80 - 40, 5, Math.random() * 80 - 40],
-          health: Math.max(10, Math.round(30 + elapsedNow * 1))
+          health,
+          maxHealth: health,
+          type
         });
       }
 

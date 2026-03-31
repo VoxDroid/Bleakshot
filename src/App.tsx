@@ -11,6 +11,7 @@ import Game from './Game';
 import HUD from './HUD';
 import Menus from './Menus';
 import Bullets from './Bullets';
+import { preloadSfx } from './sfx';
 import { useGameStore } from './store';
 import { useEffect, useRef } from 'react';
 
@@ -21,6 +22,7 @@ const keyboardMap = [
   { name: 'right', keys: ['ArrowRight', 'KeyD'] },
   { name: 'jump', keys: ['Space'] },
   { name: 'sprint', keys: ['ShiftLeft', 'ShiftRight'] },
+  { name: 'crouch', keys: ['ControlLeft', 'ControlRight', 'KeyC'] },
 ];
 
 export default function App() {
@@ -28,6 +30,8 @@ export default function App() {
   const setElapsed = useGameStore(s => s.setElapsed);
 
   useEffect(() => {
+    // Preload sound effects early so they play without delay
+    preloadSfx().catch(() => {});
     let raf = 0;
     const lastHeal = { current: 0 } as { current: number };
     function tick() {

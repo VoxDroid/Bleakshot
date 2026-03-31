@@ -3,9 +3,10 @@ import { WEAPONS } from './weapons';
 import { useEffect, useState } from 'react';
 
 export default function HUD() {
-  const { health, score, weaponIndex, ammo, gameState, isReloading, recoilTrigger, isAiming, lastPlayerHit, diamonds, revives, elapsed } = useGameStore();
+  const { health, score, weaponIndex, ammo, gameState, isReloading, recoilTrigger, isAiming, lastPlayerHit, diamonds, revives, elapsed, settings, enemies, xp, level } = useGameStore();
   const [crosshairSpread, setCrosshairSpread] = useState(0);
   const [isHit, setIsHit] = useState(false);
+  const [isEnemyHit, setIsEnemyHit] = useState(false);
 
   useEffect(() => {
     if (lastPlayerHit > 0) {
@@ -23,10 +24,20 @@ export default function HUD() {
     }
   }, [recoilTrigger]);
 
+  useEffect(() => {
+    if (!enemies || enemies.length === 0) return;
+    const last = Math.max(0, ...enemies.map(e => e.lastHit || 0));
+    if (last > 0) {
+      setIsEnemyHit(true);
+      const t = setTimeout(() => setIsEnemyHit(false), 150);
+      return () => clearTimeout(t);
+    }
+  }, [enemies]);
+
   if (gameState !== 'playing') return null;
   const weapon = WEAPONS[weaponIndex];
 
-  const baseSpread = isAiming ? 2 : 12;
+  const baseSpread = (isAiming ? 2 : 12) * (settings?.crosshairSize || 1);
   const currentSpread = baseSpread + crosshairSpread;
 
   const minutes = Math.floor(elapsed / 60);
@@ -40,7 +51,10 @@ export default function HUD() {
       
       <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-8 z-10">
         <div className="flex justify-between items-start">
-          <div className="text-4xl font-bold text-white drop-shadow-md">HP: {health}</div>
+          <div>
+            <div className="text-4xl font-bold text-white drop-shadow-md">HP: {health}</div>
+            <div className="text-sm text-gray-400 mt-1">LVL: {level} &nbsp; | &nbsp; XP: {xp} / {level * 100}</div>
+          </div>
           <div className="text-4xl font-bold text-white drop-shadow-md">SCORE: {score}</div>
           <div className="text-4xl font-bold text-white drop-shadow-md">💎 {diamonds} &nbsp; | &nbsp; {timeFormatted}</div>
         </div>
@@ -49,6 +63,10 @@ export default function HUD() {
       {/* Crosshair (hidden while scoped with sniper) */}
       {!(isAiming && weapon.name === 'Sniper') && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+          {/* Hitmarker */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-20">
+            <div className={`w-3 h-3 border-2 border-white rounded-full ${isEnemyHit ? 'opacity-100 scale-125' : 'opacity-0 scale-75'} transition-all duration-150`} />
+          </div>
           <div className="w-1 h-1 bg-white rounded-full opacity-80 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           <div className="w-4 h-0.5 bg-white/50 absolute top-1/2 transform -translate-y-1/2 transition-all duration-75" style={{ left: `-${currentSpread + 16}px` }} />
           <div className="w-4 h-0.5 bg-white/50 absolute top-1/2 transform -translate-y-1/2 transition-all duration-75" style={{ left: `${currentSpread}px` }} />
