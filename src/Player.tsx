@@ -113,8 +113,8 @@ export default function Player() {
     
     if (isShooting.current && !isReloading && now - lastShot.current > weapon.fireRate) {
       if (shoot()) {
-        lastShot.current = now;
-        try { playSfx('fire', 0.7); } catch (_) {}
+      lastShot.current = now;
+      try { playSfx(`fire${weaponIndex}`, 0.7); } catch (_) {}
         
         // Raycast
         const raycaster = new THREE.Raycaster();
